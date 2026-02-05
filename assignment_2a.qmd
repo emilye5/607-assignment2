@@ -1,0 +1,21 @@
+---
+title: "Assignment 2A"
+author: "Emily El Mouaquite"
+format: html
+editor: visual
+---
+
+## Approach
+
+Five of my friends and family members will be asked to rate the following six Studio Ghibli movies on a scale from 1–5:
+
+* Howl’s Moving Castle
+* Kiki’s Delivery Service
+* Pom Poko
+* Princess Mononoke
+* Ponyo
+* Spirited Away
+
+Based on their responses, a relational database with the attributes **raterId**, **movieId**, **movieName**, and **rating** will be created. If a rater has not seen a listed movie, a rating of 0 will be recorded.
+
+The database will then be exported to a .csv file in order to be loased into R.
