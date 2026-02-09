@@ -9,13 +9,132 @@ editor: visual
 
 Five of my friends and family members will be asked to rate the following six Studio Ghibli movies on a scale from 1–5:
 
-* Howl’s Moving Castle
-* Kiki’s Delivery Service
-* Pom Poko
-* Princess Mononoke
-* Ponyo
-* Spirited Away
+-   Howl’s Moving Castle
+-   Kiki’s Delivery Service
+-   Pom Poko
+-   Princess Mononoke
+-   Ponyo
+-   Spirited Away
 
-Based on their responses, a relational database with the attributes **raterId**, **movieId**, **movieName**, and **rating** will be created. If a rater has not seen a listed movie, a rating of 0 will be recorded.
+Based on their responses, a relational database with the tables **movies**, **raters**, and **ratings** will be created. If a rater has not seen a listed movie, a rating of 0 will be recorded.
 
-The database will then be exported to a .csv file in order to be loased into R.
+The database will then be exported to CSV files in order to be loaded into R.
+
+## Code Base
+
+Installing/ loading necessary packages into R for sqlite, and creating the database. 
+
+```{r}
+install.packages("DBI")
+install.packages("RSQLite")
+library(DBI)
+library(RSQLite)
+con <- dbConnect(SQLite(), "movies.db")
+```
+
+Creating database tables.
+```{r}
+dbExecute(con, "
+CREATE TABLE movies (
+  movieId INT PRIMARY KEY,
+  movieName TEXT
+);
+")
+dbExecute(con, "
+CREATE TABLE raters (
+  raterId INT PRIMARY KEY,
+  raterName TEXT
+);
+")
+dbExecute(con, "
+CREATE TABLE ratings (
+  raterId INT,
+  movieId INT,
+  rating INT,
+  PRIMARY KEY (raterId, movieId),
+  FOREIGN KEY (raterId) REFERENCES raters(raterId),
+  FOREIGN KEY (movieId) REFERENCES movies(movieId)
+);
+")
+```
+
+Writing into database tables using data.frame. 
+```{r}
+movies_df <- data.frame(
+  movieId = c(1,2,3,4,5,6),
+  movieName = c(
+    "Howls Moving Castle",
+    "Kiki's Delivery Service",
+    "Pom Poko",
+    "Princess Mononoke",
+    "Ponyo",
+    "Spirited Away"
+  )
+)
+raters_df <- data.frame(
+  raterId = c(1,2,3,4,5),
+  raterName = c(
+    "Ally",
+    "Barbara",
+    "Martin",
+    "Lucy",
+    "Amal"
+  )
+)
+ratings_df <- data.frame(
+  raterId = c(
+    1,1,1,1,1,1,
+    2,2,2,2,2,2,
+    3,3,3,3,3,3,
+    4,4,4,4,4,4,
+    5,5,5,5,5,5
+  ),
+  movieId = c(
+    1,2,3,4,5,6,
+    1,2,3,4,5,6,
+    1,2,3,4,5,6,
+    1,2,3,4,5,6,
+    1,2,3,4,5,6
+  ),
+  rating = c(
+    0,4,0,0,0,0,
+    5,5,0,0,5,5,
+    3,3,4,2,0,3,
+    4,0,0,3,3,2,
+    5,3,4,5,3,2
+  )
+)
+```
+
+Replacing 0 with NULL in tables. 
+```{r}
+dbExecute(con,"
+UPDATE ratings
+SET rating = NULL
+WHERE rating = 0
+")
+```
+
+Writing data into sql tables.
+```{r}
+dbWriteTable(con, "movies", movies_df, overwrite=TRUE)
+dbWriteTable(con, "raters", raters_df, overwrite=TRUE)
+dbWriteTable(con, "ratings", ratings_df, overwrite=TRUE)
+```
+
+Database query example:
+```{r}
+dbGetQuery(con, "
+SELECT m.movieName,
+       AVG(NULLIF(rt.rating,0)) AS average_rating
+FROM ratings rt
+JOIN movies m ON rt.movieId = m.movieId
+GROUP BY m.movieName
+ORDER BY average_rating DESC
+")
+```
+
+## Conclusion
+I ended up executing this assignment differently to how I had planned it in my approach. Originally, I wanted to use PostgreSQL instead of SQLite, and import the data into R using CSVs. However, I found it easier to use SQLite and populate the tables within R in the way that I did above. I have experience doing this from an undergraduate database design class.
+I began by creating a movies table, a raters table, and a junction ratings table. After populating them with their respective records and attributes, I ran one query to verify my code. This query created an average rating for each movie. 
+In order to further extend this work, one could create more tables than I did. For example, a movie release date table, or a genre table, might give more insight into the ratings. Demographics on the raters might also be helpful in that sense. Tables with this kind of information could be useful in exploring possible patterns in the ratings. 
